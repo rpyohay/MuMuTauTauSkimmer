@@ -1,0 +1,16 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use name="DataFormats/HLTReco"/>
+<use name="FWCore/ServiceRegistry"/>
+<use name="CommonTools/UtilAlgos"/>
+<use name="DataFormats/MuonReco"/>
+<use name="DataFormats/Common"/>
+<use name="PhysicsTools/Utilities"/>
+<use name="HLTrigger/HLTcore"/>
+<use name="DataFormats/PatCandidates"/>
+<use name="DataFormats/ParticleFlowCandidate"/>
+<use name="Tools/Common"/>
+<use name="root"/>
+<use name="rootgraphics"/>
+<flags EDM_PLUGIN="1"/>
