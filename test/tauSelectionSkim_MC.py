@@ -347,7 +347,7 @@ process.muHadTauSelector = cms.EDFilter(
     cms.InputTag('hpsPFTauDiscriminationByDecayModeFinding', '', 'SKIM')
     ),
     jetTag = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM'),
-    muonRemovalDecisionTag = cms.InputTag('CleanJetsi', 'valMap', 'SKIM'), # Kyle Changed This 
+    muonRemovalDecisionTag = cms.InputTag('CleanJets', 'valMap', 'SKIM'), # Kyle Changed This 
     overlapCandTag = cms.InputTag('OppositeSign'), # Kyle Uncommented This
     passDiscriminator = cms.bool(True),
     pTMin = cms.double(10.0),
