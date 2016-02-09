@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 import FWCore.Utilities.FileUtils as FileUtils
 import HLTrigger.HLTfilters.hltHighLevel_cfi as hlt
-mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/light-higgs/CMSSW_7_4_1_patch1/src/sourceFiles.txt')
+mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/CMSSW_7_4_12_patch4/src/GGHAA2Mu2TauAnalysis/heavy750light9Reco.txt')
 process = cms.Process("MUHADANALYSIS")
 
 #PDG IDs
@@ -42,7 +42,7 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load("Configuration.EventContent.EventContent_cff")
 process.load('Configuration/StandardSequences/Services_cff')
 process.load('Configuration/StandardSequences/EndOfProcess_cff')
-process.load('trigger_match.TriggerObjectFilter.MuonTriggerObjectFilter_cfi')
+#process.load('trigger_match.TriggerObjectFilter.MuonTriggerObjectFilter_cfi')
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
 
 process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32(100)
@@ -63,7 +63,6 @@ process.GlobalTag.globaltag = cms.string('MCRUN2_74_V9::All')
 
 #process.Mu16Mu0OniaSelector = process.hltHighLevel.clone()
 #process.Mu16Mu0OniaSelector.HLTPaths = cms.vstring('HLT_Mu16_TkMu0_dEta18_Onia_v1')
-
 
 process.MuonIWant = cms.EDFilter('MuonRefSelector',
                                  src = cms.InputTag('muons'),
@@ -97,10 +96,9 @@ process.afterVetoSingleMuon = cms.EDFilter('VetoMuon',
                               vetoMuonTag=cms.InputTag('muonTriggerObjectFilter1'),
                               minNumObjsToPassFilter=cms.uint32(1)
 )
-process.SingleMuonsPartnerSelector=cms.EDFilter('MuonRefSelector',
-                                                src=cms.InputTag('muons'),
-                                                cut=cms.string('pt > 5.0 & abs(eta) < 2.4'),
-                                                filter=cms.bool(True)
+process.SingleMuonsPartnerSelector=cms.EDFilter('MuonPartner',
+                                                muonTag=cms.InputTag('afterVetoSingleMuon'),
+                                                minNumObjsToPassFilter=cms.uint32(1)
 )
 process.SingleMuonPartnerLooseID=cms.EDFilter('LooseMuon',
                                               muonTag=cms.InputTag('SingleMuonsPartnerSelector'),
@@ -341,3 +339,4 @@ process.EightTauMu = cms.Sequence(
 )
 
 process.p = cms.Path(process.SingleMuonSelection)
+                           
