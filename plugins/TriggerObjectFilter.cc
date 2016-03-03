@@ -77,7 +77,7 @@ class TriggerObjectFilter : public edm::EDFilter {
       edm::InputTag recoObjTag_;
       edm::InputTag triggerEventTag_;
       edm::InputTag triggerResultsTag_;
-      double delRMatchingCut_;
+      double Cut_;
       std::vector<edm::InputTag> hltTags_;
       HLTConfigProvider hltConfig_;
       edm::InputTag theRightHLTTag_;
@@ -113,7 +113,7 @@ histos2D_()
   const edm::InputTag dTriggerResults("TriggerResults","","HLT");
   // By default, trigger results are labeled "TriggerResults" with process name "HLT" in the event.
   triggerResultsTag_ = iConfig.getUntrackedParameter<edm::InputTag>("triggerResultsTag",dTriggerResults);
-  delRMatchingCut_ = iConfig.getUntrackedParameter<double>("triggerDelRMatch", 0.30);
+  Cut_ = iConfig.getUntrackedParameter<double>("MatchCut");
   hltTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("hltTags");
   //hltConfig_ = iConfig.getParameter<HLTConfigProvider>("hltConfig");
   theRightHLTTag_ = iConfig.getParameter<edm::InputTag>("theRightHLTTag");
@@ -269,7 +269,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
      for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
                 recoObjs->begin(); iRecoObj != recoObjs->end();
               ++iRecoObj) {
-       if ((deltaR(**iRecoObj, TO1) < delRMatchingCut_) &&
+       if ((deltaR(**iRecoObj, TO1) < Cut_) &&
                  (std::find(passingRecoObjRefKeys1_NoHLT.begin(), passingRecoObjRefKeys1_NoHLT.end(),
                           iRecoObj->key()) == passingRecoObjRefKeys1_NoHLT.end())) {
          passingRecoObjRefKeys1_NoHLT.push_back(iRecoObj->key());
@@ -296,7 +296,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
              if(((*iRecoObj)->pt())>0.0)
               histos1D_["etaDistri_num1"]->Fill((*iRecoObj)->eta());
       //       isLooseMuon1=muon::isLooseMuon(**iRecoObj);
-             if ((deltaR(**iRecoObj, TO1) < delRMatchingCut_) &&
+             if ((abs((*iRecoObj)->pt()- TO1.pt())/((*iRecoObj)->pt()) < Cut_) &&
                  (std::find(passingRecoObjRefKeys1.begin(), passingRecoObjRefKeys1.end(),
                             iRecoObj->key()) == passingRecoObjRefKeys1.end())) {
                recoObjColl->push_back(*iRecoObj);
