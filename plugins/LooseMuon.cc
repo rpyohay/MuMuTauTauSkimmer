@@ -58,7 +58,7 @@ class LooseMuon : public edm::EDFilter {
       //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
       // ----------member data ---------------------------
- edm::InputTag muonTag_;
+ edm::EDGetTokenT<edm::RefVector<std::vector<reco::Muon> > > muonTag_;
  unsigned int minNumObjsToPassFilter_;
 };
 
@@ -74,7 +74,7 @@ class LooseMuon : public edm::EDFilter {
 // constructors and destructor
 //
 LooseMuon::LooseMuon(const edm::ParameterSet& iConfig):
- muonTag_(iConfig.getParameter<edm::InputTag>("muonTag")),
+ muonTag_(consumes<edm::RefVector<std::vector<reco::Muon> > >(iConfig.getParameter<edm::InputTag>("muonTag"))),
  minNumObjsToPassFilter_(iConfig.getParameter<unsigned int>("minNumObjsToPassFilter"))
 {
 
@@ -104,7 +104,7 @@ LooseMuon::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   bool isLooseMuon1=0;
   unsigned int nPassingMuons=0;
   edm::Handle<edm::RefVector<std::vector<reco::Muon> > > recoObjs;
-  iEvent.getByLabel(muonTag_, recoObjs);
+  iEvent.getByToken(muonTag_, recoObjs);
   std::auto_ptr<reco::MuonRefVector> muonColl(new reco::MuonRefVector);
   for (typename edm::RefVector<std::vector<reco::Muon> >::const_iterator iRecoObj =
        recoObjs->begin(); iRecoObj != recoObjs->end();
