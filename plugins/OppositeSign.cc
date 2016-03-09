@@ -58,8 +58,8 @@ class OppositeSign : public edm::EDFilter {
       //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
       // ----------member data ---------------------------
- edm::InputTag muonTag_;
- edm::InputTag SingleMuonTag_; 
+ edm::EDGetTokenT<reco::MuonRefVector> muonTag_;
+ edm::EDGetTokenT<reco::MuonRefVector> SingleMuonTag_; 
  unsigned int minNumObjsToPassFilter_;
 };
 
@@ -75,10 +75,8 @@ class OppositeSign : public edm::EDFilter {
 // constructors and destructor
 //
 OppositeSign::OppositeSign(const edm::ParameterSet& iConfig):
-  muonTag_(iConfig.existsAs<edm::InputTag>("muonTag") ? 
-	   iConfig.getParameter<edm::InputTag>("muonTag") : edm::InputTag()),
- SingleMuonTag_(iConfig.existsAs<edm::InputTag>("SingleMuonTag") ? 
-	   iConfig.getParameter<edm::InputTag>("SingleMuonTag") : edm::InputTag()),
+  muonTag_(consumes<reco::MuonRefVector>(iConfig.getParameter<edm::InputTag>("muonTag"))),
+  SingleMuonTag_(consumes<reco::MuonRefVector>(iConfig.getParameter<edm::InputTag>("SingleMuonTag"))),
  minNumObjsToPassFilter_(iConfig.getParameter<unsigned int>("minNumObjsToPassFilter"))
 {
 
@@ -108,12 +106,10 @@ OppositeSign::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   unsigned int nPassingMuons =0;
   std::auto_ptr<reco::MuonRefVector> muonColl(new reco::MuonRefVector);
   edm::Handle<reco::MuonRefVector> pMuons;
-  if (muonTag_ == edm::InputTag()) {}
-  else iEvent.getByLabel(muonTag_, pMuons);
+  iEvent.getByToken(muonTag_, pMuons);
 
   edm::Handle<reco::MuonRefVector> pSingleMuons;
-  if (SingleMuonTag_ == edm::InputTag()) {}
-  else iEvent.getByLabel(SingleMuonTag_, pSingleMuons);
+  iEvent.getByToken(SingleMuonTag_, pSingleMuons);
 
 
   if (pSingleMuons.isValid()&& pMuons.isValid()) {

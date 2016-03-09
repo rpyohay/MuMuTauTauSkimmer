@@ -58,7 +58,7 @@ class HighestPtSelector : public edm::EDFilter {
       //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
       // ----------member data ---------------------------
-edm::InputTag muonTag_; 
+edm::EDGetTokenT<reco::MuonRefVector> muonTag_; 
 };
 
 //
@@ -73,7 +73,7 @@ edm::InputTag muonTag_;
 // constructors and destructor
 //
 HighestPtSelector::HighestPtSelector(const edm::ParameterSet& iConfig):
-  muonTag_(iConfig.getParameter<edm::InputTag>("muonTag"))
+  muonTag_(consumes<reco::MuonRefVector>(iConfig.getParameter<edm::InputTag>("muonTag")))
 {
    //now do what ever initialization is needed
    produces<reco::MuonRefVector>();
@@ -101,7 +101,7 @@ HighestPtSelector::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
    using namespace edm;
 
    edm::Handle<reco::MuonRefVector> pMuons;
-   iEvent.getByLabel(muonTag_, pMuons); 
+   iEvent.getByToken(muonTag_, pMuons); 
    if((pMuons->size())==0)
    {
      LargerThan0=false;

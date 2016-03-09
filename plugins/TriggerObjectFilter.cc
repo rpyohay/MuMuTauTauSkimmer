@@ -74,10 +74,10 @@ class TriggerObjectFilter : public edm::EDFilter {
       virtual void endRun(const edm::Run& iRun, edm::EventSetup const& iSetup);
 //      virtual bool endLuminosityBlock(edm::LuminosityBlock&, edm::EventSetup const&)/* override*/;
       // ----------member data ---------------------------
-      edm::InputTag recoObjTag_;
-      edm::InputTag triggerEventTag_;
-      edm::InputTag triggerResultsTag_;
-      double delRMatchingCut_;
+      edm::EDGetTokenT<edm::RefVector<std::vector<T> > > recoObjTag_;
+      edm::EDGetTokenT<trigger::TriggerEvent>  triggerEventTag_;
+      edm::EDGetTokenT<edm::TriggerResults> triggerResultsTag_;
+      double Cut_;
       std::vector<edm::InputTag> hltTags_;
       HLTConfigProvider hltConfig_;
       edm::InputTag theRightHLTTag_;
@@ -101,26 +101,26 @@ class TriggerObjectFilter : public edm::EDFilter {
 //
 template<class T>
 TriggerObjectFilter<T>::TriggerObjectFilter(const edm::ParameterSet& iConfig):
-hltConfig_(),
-histos1D_(), 
-histos2D_()
-{
-  //now do what ever initialization is needed
-   
-  recoObjTag_ = iConfig.getParameter<edm::InputTag>("recoObjTag");
-  const edm::InputTag dTriggerEventTag("hltTriggerSummaryAOD","","HLT");
-  triggerEventTag_ = iConfig.getUntrackedParameter<edm::InputTag>("triggerEventTag",dTriggerEventTag);
-  const edm::InputTag dTriggerResults("TriggerResults","","HLT");
+  recoObjTag_(consumes<edm::RefVector<std::vector<T> > >(iConfig.getParameter<edm::InputTag>("recoObjTag"))),
+////////////////  triggerEventTag_(consumes<trigger::TriggerEvent>(iConfig.getUntrackedParameter<edm::InputTag>("triggerEventTag"))),//,dTriggerEventTag))),
   // By default, trigger results are labeled "TriggerResults" with process name "HLT" in the event.
-  triggerResultsTag_ = iConfig.getUntrackedParameter<edm::InputTag>("triggerResultsTag",dTriggerResults);
-  delRMatchingCut_ = iConfig.getUntrackedParameter<double>("triggerDelRMatch", 0.30);
-  hltTags_ = iConfig.getParameter<std::vector<edm::InputTag> >("hltTags");
+//////////  triggerResultsTag_(consumes<edm::TriggerResults>(iConfig.getUntrackedParameter<edm::InputTag>("triggerResultsTag"))),//,dTriggerResults)))
+  Cut_(iConfig.getUntrackedParameter<double>("MatchCut")),
+  hltTags_(iConfig.getParameter<std::vector<edm::InputTag> >("hltTags")),
+  hltConfig_(),
   //hltConfig_ = iConfig.getParameter<HLTConfigProvider>("hltConfig");
-  theRightHLTTag_ = iConfig.getParameter<edm::InputTag>("theRightHLTTag");
-  theRightHLTSubFilter1_ = iConfig.getParameter<edm::InputTag>("theRightHLTSubFilter1");
+  theRightHLTTag_(iConfig.getParameter<edm::InputTag>("theRightHLTTag")),
+  theRightHLTSubFilter1_(iConfig.getParameter<edm::InputTag>("theRightHLTSubFilter1")),
   //Whether using HLT trigger path name or the actual trigger filter name. Trigger path is default.
-  HLTSubFilters_ = iConfig.getUntrackedParameter<std::vector<edm::InputTag> >("HLTSubFilters",std::vector<edm::InputTag>());
-  minNumObjsToPassFilter1_ = iConfig.getParameter<unsigned int>("minNumObjsToPassFilter1");
+  HLTSubFilters_(iConfig.getUntrackedParameter<std::vector<edm::InputTag> >("HLTSubFilters",std::vector<edm::InputTag>())),
+  minNumObjsToPassFilter1_(iConfig.getParameter<unsigned int>("minNumObjsToPassFilter1")),
+  histos1D_(),
+  histos2D_()
+{
+  const edm::InputTag dTriggerEventTag("hltTriggerSummaryAOD","","HLT");
+  triggerEventTag_ = (consumes<trigger::TriggerEvent>(iConfig.getUntrackedParameter<edm::InputTag>("triggerEventTag",dTriggerEventTag)));
+  const edm::InputTag dTriggerResults("TriggerResults","","HLT");
+  triggerResultsTag_ = (consumes<edm::TriggerResults>(iConfig.getUntrackedParameter<edm::InputTag>("triggerResultsTag",dTriggerResults)));
 
   produces<edm::RefVector<std::vector<T> > >();
 }
@@ -185,13 +185,15 @@ template<class T>
 bool
 TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
- // std::cout<< "enterfilter"<< std::endl;
+  std::cout<< "***********enterTriggerfilter, begin of a event *******************"<< std::endl;
   //create pointer to output collection
   std::auto_ptr<edm::RefVector<std::vector<T> > > recoObjColl(new edm::RefVector<std::vector<T> >);
   int index1 = 9999;
+
   //get reco objects
   edm::Handle<edm::RefVector<std::vector<T> > > recoObjs;
-  iEvent.getByLabel(recoObjTag_, recoObjs);
+  iEvent.getByToken(recoObjTag_, recoObjs);
+
   double max=0.0;
   //double eta_of_max=0.0;
   for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
@@ -209,9 +211,11 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
   } 
   // Trigger Info
   edm::Handle<trigger::TriggerEvent> trgEvent;
-  iEvent.getByLabel(triggerEventTag_,trgEvent);
+  iEvent.getByToken(triggerEventTag_, trgEvent);
+
   edm::Handle<edm::TriggerResults> pTrgResults;
-  iEvent.getByLabel(triggerResultsTag_, pTrgResults);
+  iEvent.getByToken(triggerResultsTag_, pTrgResults);
+
   std::map<std::string, bool> triggerInMenu;
   std::string myHLTFilter = "";
 
@@ -220,13 +224,12 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
   // loop over active HLT paths to search for desired path
   for (std::vector<std::string>::const_iterator iHLT = activeHLTPathsInThisEvent.begin(); iHLT != activeHLTPathsInThisEvent.end(); ++iHLT) { // active paths loop
 
-    for (std::vector<edm::InputTag>::const_iterator iMyHLT = hltTags_.begin(); 
-	 iMyHLT != hltTags_.end(); ++iMyHLT) {
+    for (std::vector<edm::InputTag>::const_iterator iMyHLT = hltTags_.begin(); iMyHLT != hltTags_.end(); ++iMyHLT) {
       if ((*iMyHLT).label() == *iHLT) {
         //cout << "######## " << *iHLT << endl;
         myHLTFilter = (*iMyHLT).label();
 	triggerInMenu[(*iMyHLT).label()] = true;
-      //  std::cout << "(*iMyHLT).label() = " << (*iMyHLT).label() << std::endl;
+        //std::cout << "(*iMyHLT).label() = " << (*iMyHLT).label() << std::endl;
  	//std::cout << "hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) = ";
   	//std::cout << hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) << std::endl;
       }
@@ -269,7 +272,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
      for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
                 recoObjs->begin(); iRecoObj != recoObjs->end();
               ++iRecoObj) {
-       if ((deltaR(**iRecoObj, TO1) < delRMatchingCut_) &&
+       if ((deltaR(**iRecoObj, TO1) < Cut_) &&
                  (std::find(passingRecoObjRefKeys1_NoHLT.begin(), passingRecoObjRefKeys1_NoHLT.end(),
                           iRecoObj->key()) == passingRecoObjRefKeys1_NoHLT.end())) {
          passingRecoObjRefKeys1_NoHLT.push_back(iRecoObj->key());
@@ -296,7 +299,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
              if(((*iRecoObj)->pt())>0.0)
               histos1D_["etaDistri_num1"]->Fill((*iRecoObj)->eta());
       //       isLooseMuon1=muon::isLooseMuon(**iRecoObj);
-             if ((deltaR(**iRecoObj, TO1) < delRMatchingCut_) &&
+             if ((abs((*iRecoObj)->pt()- TO1.pt())/((*iRecoObj)->pt()) < Cut_) &&
                  (std::find(passingRecoObjRefKeys1.begin(), passingRecoObjRefKeys1.end(),
                             iRecoObj->key()) == passingRecoObjRefKeys1.end())) {
                recoObjColl->push_back(*iRecoObj);

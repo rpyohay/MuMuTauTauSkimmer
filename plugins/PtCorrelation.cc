@@ -74,8 +74,8 @@ class PtCorrelation : public edm::EDFilter {
       virtual void endRun(const edm::Run& iRun, edm::EventSetup const& iSetup);
 //      virtual bool endLuminosityBlock(edm::LuminosityBlock&, edm::EventSetup const&)/* override*/;
       // ----------member data ---------------------------
-      edm::InputTag recoObjTag17_;
-      edm::InputTag recoObjTag8_;
+      edm::EDGetTokenT<edm::RefVector<std::vector<T> > > recoObjTag17_;
+      edm::EDGetTokenT<edm::RefVector<std::vector<T> > > recoObjTag8_;
       std::map<std::string, TH2D*> histos2D_;
 };
 
@@ -92,13 +92,10 @@ class PtCorrelation : public edm::EDFilter {
 //
 template<class T>
 PtCorrelation<T>::PtCorrelation(const edm::ParameterSet& iConfig):
-histos2D_()
+  recoObjTag17_(consumes<edm::RefVector<std::vector<T> > >(iConfig.getParameter<edm::InputTag>("recoObjTag17"))),
+  recoObjTag8_(consumes<edm::RefVector<std::vector<T> > >(iConfig.getParameter<edm::InputTag>("recoObjTag8"))),
+  histos2D_()
 {
-  //now do what ever initialization is needed
-   
-  recoObjTag8_ = iConfig.getParameter<edm::InputTag>("recoObjTag8");
-  recoObjTag17_ = iConfig.getParameter<edm::InputTag>("recoObjTag17");
-
 }
 
 template<class T>
@@ -145,9 +142,9 @@ PtCorrelation<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   //get reco objects
   edm::Handle<edm::RefVector<std::vector<T> > > recoObjs17;
-  iEvent.getByLabel(recoObjTag17_, recoObjs17);
+  iEvent.getByToken(recoObjTag17_, recoObjs17);
   edm::Handle<edm::RefVector<std::vector<T> > > recoObjs8;
-  iEvent.getByLabel(recoObjTag8_, recoObjs8);
+  iEvent.getByToken(recoObjTag8_, recoObjs8);
   bool pass=0;
   if(recoObjs17->size() && recoObjs8->size()){
     pass=1;
