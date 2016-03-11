@@ -171,7 +171,8 @@ TriggerObjectFilter<T>::beginJob()
 
   histos1D_["etaDistri_de2"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco muon with Mu17 trigger-reco match, no HLT fired",60,-3.,3.);
   histos1D_["num_divide_de2"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu17 trigger efficiency(with trigger-reco match)",60,-3.,3.);
-
+  histos1D_["ptDistriTriggerObj"]=fileService->make<TH1D>("ptDistriTriggerObj", "pt distribution of trigger object when trigger is fired",100,0,500);
+   histos1D_["ptDistriTriggerObjNotFired"]=fileService->make<TH1D>("ptDistriTriggerObjNOT", "pt distribution of trigger object when trigger is NOT fired",100,0,500);
   histos1D_["keysize1"]=fileService->make<TH1D>("keysize1","#of particles per event passing Mu17 leg statistics",10,0,10);
   histos2D_["ptTrigCand1"] =fileService->make< TH2D >("ptTrigCand1","Object vs. candidate_higher_p_{T} (GeV)",150, 0., 150., 150, 0., 150.);
   histos2D_[ "ptTrigCand1" ]->SetXTitle( "candidate p_{T} (GeV)" );
@@ -226,12 +227,12 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
 
     for (std::vector<edm::InputTag>::const_iterator iMyHLT = hltTags_.begin(); iMyHLT != hltTags_.end(); ++iMyHLT) {
       if ((*iMyHLT).label() == *iHLT) {
-        //cout << "######## " << *iHLT << endl;
+       // cout << "######## " << *iHLT << endl;
         myHLTFilter = (*iMyHLT).label();
 	triggerInMenu[(*iMyHLT).label()] = true;
         //std::cout << "(*iMyHLT).label() = " << (*iMyHLT).label() << std::endl;
- 	//std::cout << "hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) = ";
-  	//std::cout << hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) << std::endl;
+// 	std::cout << "hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) = ";
+ // 	std::cout << hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) << std::endl;
       }
     }
   } // active paths loop
@@ -242,6 +243,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
   std::vector<std::string> filters;
    try { filters = hltConfig_.moduleLabels( theRightHLTTag_.label() ); }
    catch (std::exception ex) { cout << "bad trigger\n"; }
+   std::cout<<"trgEvent->sizeFilters()"<<trgEvent->sizeFilters()<<std::endl;
    for(int i=0; i != trgEvent->sizeFilters(); ++i) {
      
      std::string label(trgEvent->filterTag(i).label());
@@ -261,6 +263,12 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
    const edm::TriggerNames &trgNames = iEvent.triggerNames(*pTrgResults);
    const unsigned int trgIndex = trgNames.triggerIndex(myHLTFilter);
    bool firedHLT = (trgIndex < trgNames.size()) && (pTrgResults->accept(trgIndex));
+   if(!firedHLT){
+    std::cout <<"trgIndex=="<<trgIndex;
+     std::cout <<"trigNames.size()=="<<trgNames.size();
+     std::cout<<"pTrgResults->accept(trgIndex)=="<<pTrgResults->accept(trgIndex);
+     
+   }
    std::vector<unsigned int> passingRecoObjRefKeys1;
    std::vector<unsigned int> passingRecoObjRefKeys1_NoHLT;
  
@@ -284,15 +292,28 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
    }
    histos1D_["keysize1"]->Fill(passingRecoObjRefKeys1_NoHLT.size());
  
-
-
+   if(!firedHLT)
+     {
+       for(int ipart1=0; ipart1 != nK1; ++ipart1){
+         const trigger::TriggerObject& TO1 =TOC[KEYS1[ipart1]];
+       histos1D_["ptDistriTriggerObjNotFired"]->Fill(TO1.pt());  
+       for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
+                recoObjs->begin(); iRecoObj != recoObjs->end();
+              ++iRecoObj) {
+           if ((deltaR(**iRecoObj, TO1) < Cut_) &&
+                 (std::find(passingRecoObjRefKeys1_NoHLT.begin(), passingRecoObjRefKeys1_NoHLT.end(),
+                          iRecoObj->key()) == passingRecoObjRefKeys1_NoHLT.end())) {
+           }
+         }
+       }
+    }
 
    if (firedHLT)
      { // firedHLT
          for(int ipart1 = 0; ipart1 != nK1; ++ipart1) {
 
            const trigger::TriggerObject& TO1 = TOC[KEYS1[ipart1]];
-
+           histos1D_["ptDistriTriggerObj"]->Fill(TO1.pt());
            for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
                 recoObjs->begin(); iRecoObj != recoObjs->end();
               ++iRecoObj) {

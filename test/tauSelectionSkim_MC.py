@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 from subprocess import *
 import FWCore.Utilities.FileUtils as FileUtils
-mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/k/ktos/GroupDir/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/gg2H2aa2mumutautau_19GeV_step2.txt')
+mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/heavy300light9Reco.txt')
 process = cms.Process("SKIM")
 
 #PDG IDs
@@ -227,15 +227,13 @@ process.MuonIWant = cms.EDFilter('MuonRefSelector',
                                  cut = cms.string('pt > 0.0'),
                                  filter = cms.bool(False)
 )
-process.SingleMuon = cms.EDFilter('MuonRefSelector',
-                                 src = cms.InputTag('muons'),
-                                 cut = cms.string('pt > 45.0 & abs( eta ) < 2.1'),
-                                 filter = cms.bool(True)
+process.HighestPTMuon = cms.EDFilter('HighestPtSelector',
+                                 muonTag = cms.InputTag('MuonIWant')
 )
 
 process.Mu45Selector = cms.EDFilter(
     'MuonTriggerObjectFilter',
-    recoObjTag = cms.InputTag('SingleMuon'),
+    recoObjTag = cms.InputTag('HighestPTMuon'),
     triggerEventTag = cms.untracked.InputTag("hltTriggerSummaryAOD", "", "HLT"),
     triggerResultsTag = cms.untracked.InputTag("TriggerResults", "", "HLT"),
     MatchCut = cms.untracked.double(0.3),
@@ -245,7 +243,7 @@ process.Mu45Selector = cms.EDFilter(
     theRightHLTSubFilter1 = cms.InputTag("hltL3fL1sMu16orMu25L1f0L2f10QL3Filtered45e2p1Q"),
     HLTSubFilters = cms.untracked.VInputTag(""),
     minNumObjsToPassFilter1= cms.uint32(1),
-    outFileName=cms.string("/afs/cern.ch/user/k/ktos/GroupDir/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/MuMuTauTauSkimmer/BSUB/TriggerPlots750.root")
+    outFileName=cms.string("'/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/MuMuTauTauSkimmer/BSUB/TriggerPlots300.root")
 )
 process.SingleMuonLooseID=cms.EDFilter('LooseMuon',
                                        muonTag=cms.InputTag('Mu45Selector'),
@@ -266,7 +264,7 @@ process.SingleMuonPartnerLooseID=cms.EDFilter('LooseMuon',
 )
 process.OppositeSign=cms.EDFilter('OppositeSign',
                                    muonTag=cms.InputTag('SingleMuonPartnerLooseID'),
-                                   SingleMuonTag=cms.InputTag('SingleMuon'),
+                                   SingleMuonTag=cms.InputTag('HighestPTMuon'),
                                    minNumObjsToPassFilter=cms.uint32(1)
 )
 process.tauMuonPTSelector = cms.EDFilter('MuonRefSelector',
@@ -312,7 +310,7 @@ process.tauMuonSelector = cms.EDFilter('CustomMuonSelector',
 process.CleanJets.muonSrc=cms.InputTag('tauMuonSelector') # 
 process.CleanJets.PFCandSrc = cms.InputTag('particleFlow')
 process.CleanJets.cutOnGenMatches = cms.bool(False)
-process.CleanJets.outFileName = cms.string('/afs/cern.ch/user/k/ktos/GroupDir/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/MuMuTauTauSkimmer/BSUB/NMSSMSignal_MuProperties.root')
+process.CleanJets.outFileName = cms.string('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/MuMuTauTauSkimmer/BSUB/NMSSMSignal_MuProperties.root')
 process.recoTauAK4PFJets08Region.src = cms.InputTag("CleanJets", "ak4PFJetsNoMu", "SKIM")
 process.ak4PFJetTracksAssociatorAtVertex.jets = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM')
 process.recoTauAK4PFJets08Region.src = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM')
@@ -330,27 +328,6 @@ process.recoTauCommonSequence = cms.Sequence(   process.tauMuonPTSelector*
 )
 
 process.PFTau = cms.Sequence(process.recoTauCommonSequence*process.recoTauClassicHPSSequence) # Kyle Changed  This
-#find taus in |eta| < 2.4 matched to muon-tagged cleaned jets that pass the medium isolation
-#discriminator
-#this will produce a ref to the cleaned tau collection
-process.muHadIsoTauSelector = cms.EDFilter(
-    'CustomTauSelector',
-    baseTauTag = cms.InputTag('hpsPFTauProducer', '', 'SKIM'),
-    tauHadIsoTag = cms.InputTag('hpsPFTauDiscriminationByCombinedIsolationDeltaBetaCorrRaw3Hits', '',
-                                'SKIM'),
-    tauDiscriminatorTags = cms.VInputTag(
-    cms.InputTag('hpsPFTauDiscriminationByDecayModeFindingOldDMs', '', 'SKIM'), 
-    cms.InputTag('hpsPFTauDiscriminationByMediumCombinedIsolationDeltaBetaCorr3Hits', '', 'SKIM')
-    ),
-    jetTag = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM'),
-    muonRemovalDecisionTag = cms.InputTag('CleanJets', 'valMap', 'SKIM'), # Kyle Chagned This
-   # overlapCandTag = cms.InputTag('OppositeSign'), # Kyle Uncommented This
-    passDiscriminator = cms.bool(True),
-    etaMax = cms.double(2.4),
-    isoMax = cms.double(-1.0),
-    dR = cms.double(0.5),
-    minNumObjsToPassFilter = cms.uint32(1)
-    )
 
 #find taus in |eta| < 2.4 matched to muon-tagged cleaned jets
 #this will produce a ref to the cleaned tau collection
@@ -364,39 +341,23 @@ process.muHadTauSelector = cms.EDFilter(
     ),
     jetTag = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM'),
     muonRemovalDecisionTag = cms.InputTag('CleanJets','valMap','SKIM'),  
-#    overlapCandTag = cms.InputTag('OppositeSign'),#this module has a selection efficiency 5%, but comment this line out, rate goes up to 80%.
+    overlapCandTag = cms.InputTag('HighestPTMuon'),#this module has a selection efficiency 5%, but comment this line out, rate goes up to 80%.
     passDiscriminator = cms.bool(True),
     pTMin = cms.double(5.0),
     etaMax = cms.double(2.4),
     isoMax = cms.double(-1.0),
     dR = cms.double(0.3),
     minNumObjsToPassFilter = cms.uint32(1),
-    outFileName=cms.string('/afs/cern.ch/user/k/ktos/GroupDir/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/MuMuTauTauSkimmer/BSUB/Tau_invMass_recoLevel_out.root')
+    outFileName=cms.string('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/MuMuTauTauSkimmer/BSUB/Tau_invMass_recoLevel_out.root')
     )
 
-#find taus in |eta| < 2.4 matched to muon-tagged cleaned jets that fail the medium isolation
-#discriminator
-#this will produce a ref to the cleaned tau collection
-process.muHadNonIsoTauSelector = cms.EDFilter(
-    'CustomTauSepFromMuonSelector',
-    tauTag = cms.InputTag('muHadTauSelector'),
-    baseTauTag = cms.InputTag('hpsPFTauProducer', '', 'SKIM'),
-    tauHadIsoTag = cms.InputTag('hpsPFTauDiscriminationByCombinedIsolationDeltaBetaCorrRaw3Hits', '',
-                                'SKIM'),
-    tauDiscriminatorTags = cms.VInputTag(
-    cms.InputTag('hpsPFTauDiscriminationByMediumCombinedIsolationDeltaBetaCorr3Hits', '', 'SKIM')
-    ),
-    jetTag = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM'),
-    muonRemovalDecisionTag = cms.InputTag('CleanJets', 'valMap', 'SKIM'), # Kyle Changed This
-#    muonTag = cms.InputTag('OppositeSign'), # Kyle Uncommented This
-    passDiscriminator = cms.bool(False),
-    etaMax = cms.double(2.4),
-    isoMax = cms.double(-1.0),
-    dR = cms.double(0.5),
-    minNumObjsToPassFilter = cms.uint32(1)
-    )
+process.TauMatchedMuonSelector=cms.EDFilter(
+     "TauMatchedMuonSelector",
+     muonTag=cms.InputTag(''),
+     jetMuonMapTag=cms.InputTag('ValMap'),
+     tauTag=cms.InputTag('')  
 
-
+)
 #output
 process.selectedOutput = cms.OutputModule(
     "PoolOutputModule",
@@ -419,8 +380,8 @@ process.noSelectedOutput = cms.OutputModule(
 
 #sequences
 process.MuMuSequenceSelector=cms.Sequence(
-	process.SingleMuon*
 	process.MuonIWant*
+	process.HighestPTMuon*
 	process.Mu45Selector*
 	process.SingleMuonLooseID*
 	process.afterVetoSingleMuon*
