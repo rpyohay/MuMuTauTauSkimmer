@@ -86,6 +86,7 @@ class TriggerObjectFilter : public edm::EDFilter {
       unsigned int minNumObjsToPassFilter1_;
       std::map<std::string, TH1D*> histos1D_;
       std::map<std::string, TH2D*> histos2D_;
+      int numberHLT=1;
 };
 
 //
@@ -164,20 +165,27 @@ TriggerObjectFilter<T>::beginJob()
   //std::cout<< "beginJob" << std::endl;
   edm::Service<TFileService> fileService;
   histos1D_[ "etaDistri_num" ]=fileService->make<TH1D>("etaDistri_num","eta distribution of higher pt muon with fired HLT and trigger-reco match",60,-3.,3.);
-  histos1D_["etaDistri_de"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco pt>17 muon without trigger fired or trigger-reco match",60,-3.,3.);
-  histos1D_["num_divide_de"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu17 trigger+trigger matching efficiency",60,-3.,3.);
-  histos1D_[ "etaDistri_num1" ]=fileService->make<TH1D>("etaDistri_num1","eta distribution of reco pt>17 muon with fired HLT no trigger-reco match",60,-3.,3.);
-  histos1D_["num_divide_de1"]=fileService->make<TH1D>("num_divide_de1","eta distribution of Mu17 trigger efficiency(no trigger-reco match done)",60,-3.,3.);
+  histos1D_["etaDistri_de"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco muon without trigger fired or trigger-reco match",60,-3.,3.);
+  histos1D_["num_divide_de"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu45 trigger+trigger matching efficiency",60,-3.,3.);
+  histos1D_[ "etaDistri_num1" ]=fileService->make<TH1D>("etaDistri_num1","eta distribution of reco muon with fired HLT no trigger-reco match",60,-3.,3.);
+  histos1D_["num_divide_de1"]=fileService->make<TH1D>("num_divide_de1","eta distribution of Mu45 trigger efficiency(no trigger-reco match done)",60,-3.,3.);
 
-  histos1D_["etaDistri_de2"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco muon with Mu17 trigger-reco match, no HLT fired",60,-3.,3.);
-  histos1D_["num_divide_de2"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu17 trigger efficiency(with trigger-reco match)",60,-3.,3.);
-  histos1D_["ptDistriTriggerObj"]=fileService->make<TH1D>("ptDistriTriggerObj", "pt distribution of trigger object when trigger is fired",100,0,500);
-   histos1D_["ptDistriTriggerObjNotFired"]=fileService->make<TH1D>("ptDistriTriggerObjNOT", "pt distribution of trigger object when trigger is NOT fired",100,0,500);
-  histos1D_["keysize1"]=fileService->make<TH1D>("keysize1","#of particles per event passing Mu17 leg statistics",10,0,10);
-  histos2D_["ptTrigCand1"] =fileService->make< TH2D >("ptTrigCand1","Object vs. candidate_higher_p_{T} (GeV)",150, 0., 150., 150, 0., 150.);
-  histos2D_[ "ptTrigCand1" ]->SetXTitle( "candidate p_{T} (GeV)" );
-  histos2D_[ "ptTrigCand1" ]->SetYTitle( "object p_{T} (GeV)" );
+  histos1D_["etaDistri_de2"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco muon with Mu45 trigger-reco match, no HLT fired",60,-3.,3.);
+  histos1D_["num_divide_de2"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu45 trigger efficiency(with trigger-reco match)",60,-3.,3.);
+  histos1D_["ptDistriTriggerObj"]=fileService->make<TH1D>("ptDistriTriggerObj", "DrellY pt distribution of trigger muon when trigger is fired",100,0,500);
+  histos1D_["ptDistriTriggerObj"]->SetXTitle("P_{T}(GeV)");
 
+  histos1D_["ptDistriRecoObj"]=fileService->make<TH1D>("ptDistriRecoObj","DrellY pt distribution of reco muon when trigger is fired", 100,0,500);
+  histos1D_["ptDistriRecoObj"]->SetXTitle("P_{T}(GeV)");
+
+  histos1D_["ptDistriTriggerObjNotFired"]=fileService->make<TH1D>("ptDistriTriggerObjNOT", "DrellY pt distribution of trigger muon when trigger is NOT fired",100,0,500);
+  histos1D_["ptDistriTriggerObjNotFired"]->SetXTitle("P_{T}(GeV)");
+  histos1D_["keysize1"]=fileService->make<TH1D>("keysize1","#of particles per event passing Mu45 leg statistics",10,0,10);
+  histos2D_["ptTrigCand1"] =fileService->make< TH2D >("ptTrigCand1","DrellY Trigger vs. reco muon with highest p_{T} (GeV)",150, 0., 150., 150, 0., 150.);
+  histos2D_[ "ptTrigCand1" ]->SetXTitle( "reco muon p_{T} (GeV)" );
+  histos2D_[ "ptTrigCand1" ]->SetYTitle( "trigger muon p_{T} (GeV)" );
+  histos1D_["HLTRate"]=fileService->make<TH1D>("HLTRate", "# of events fire HLT trigger", 10,0,10);
+  histos1D_["HLTNotFireRate"]=fileService->make<TH1D>("HLTNotFireRate", "# of events not fire HLT trigger", 10,0,10);
 
 }
 
@@ -186,7 +194,7 @@ template<class T>
 bool
 TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-  std::cout<< "***********enterTriggerfilter, begin of a event *******************"<< std::endl;
+ // std::cout<< "***********enterTriggerfilter, begin of a event *******************"<< std::endl;
   //create pointer to output collection
   std::auto_ptr<edm::RefVector<std::vector<T> > > recoObjColl(new edm::RefVector<std::vector<T> >);
   int index1 = 9999;
@@ -230,7 +238,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
        // cout << "######## " << *iHLT << endl;
         myHLTFilter = (*iMyHLT).label();
 	triggerInMenu[(*iMyHLT).label()] = true;
-        //std::cout << "(*iMyHLT).label() = " << (*iMyHLT).label() << std::endl;
+       // std::cout << "(*iMyHLT).label() = " << (*iMyHLT).label() << std::endl;
 // 	std::cout << "hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) = ";
  // 	std::cout << hltConfig_.prescaleValue(iEvent, iSetup, *iHLT) << std::endl;
       }
@@ -243,13 +251,14 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
   std::vector<std::string> filters;
    try { filters = hltConfig_.moduleLabels( theRightHLTTag_.label() ); }
    catch (std::exception ex) { cout << "bad trigger\n"; }
-   std::cout<<"trgEvent->sizeFilters()"<<trgEvent->sizeFilters()<<std::endl;
+//   std::cout<<"trgEvent->sizeFilters()"<<trgEvent->sizeFilters()<<std::endl;
    for(int i=0; i != trgEvent->sizeFilters(); ++i) {
      
      std::string label(trgEvent->filterTag(i).label());
-     //std::cout << trgEvent->filterTag(i) << std::endl;
      if( label.find(theRightHLTSubFilter1_.label()) != std::string::npos )
        {
+        // std::cout<<"label.find(theRightHLTSubFilter1_label())="<<label.find(theRightHLTSubFilter1_.label())<<std::endl;
+        // std::cout<<"std::string::npos="<<std::string::npos<<std::endl;
          index1 = i;
        }
  
@@ -258,17 +267,13 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
    if (index1== 9999){
      index1 = 0;
      }
+  // std::cout<<"index1="<<index1<<std::endl;
    const trigger::Keys& KEYS1(trgEvent->filterKeys(index1));
    const size_type nK1(KEYS1.size());
    const edm::TriggerNames &trgNames = iEvent.triggerNames(*pTrgResults);
    const unsigned int trgIndex = trgNames.triggerIndex(myHLTFilter);
+  // std::cout<<"trgIndex"<<trgIndex<<std::endl;
    bool firedHLT = (trgIndex < trgNames.size()) && (pTrgResults->accept(trgIndex));
-   if(!firedHLT){
-    std::cout <<"trgIndex=="<<trgIndex;
-     std::cout <<"trigNames.size()=="<<trgNames.size();
-     std::cout<<"pTrgResults->accept(trgIndex)=="<<pTrgResults->accept(trgIndex);
-     
-   }
    std::vector<unsigned int> passingRecoObjRefKeys1;
    std::vector<unsigned int> passingRecoObjRefKeys1_NoHLT;
  
@@ -294,8 +299,11 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
  
    if(!firedHLT)
      {
+       histos1D_["HLTNotFireRate"]->Fill(numberHLT);
        for(int ipart1=0; ipart1 != nK1; ++ipart1){
          const trigger::TriggerObject& TO1 =TOC[KEYS1[ipart1]];
+      // std::cout<<"HLT not fired! TO1.pt()="<<TO1.pt()<<"\n TO1.eta()"<<TO1.eta()<<std::endl;
+       
        histos1D_["ptDistriTriggerObjNotFired"]->Fill(TO1.pt());  
        for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
                 recoObjs->begin(); iRecoObj != recoObjs->end();
@@ -310,6 +318,7 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
 
    if (firedHLT)
      { // firedHLT
+         histos1D_["HLTRate"]->Fill(numberHLT);
          for(int ipart1 = 0; ipart1 != nK1; ++ipart1) {
 
            const trigger::TriggerObject& TO1 = TOC[KEYS1[ipart1]];
@@ -317,13 +326,14 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
            for (typename edm::RefVector<std::vector<T> >::const_iterator iRecoObj =
                 recoObjs->begin(); iRecoObj != recoObjs->end();
               ++iRecoObj) {
-             if(((*iRecoObj)->pt())>0.0)
+              histos1D_["ptDistriRecoObj"]->Fill((*iRecoObj)->pt());
               histos1D_["etaDistri_num1"]->Fill((*iRecoObj)->eta());
       //       isLooseMuon1=muon::isLooseMuon(**iRecoObj);
-             if ((abs((*iRecoObj)->pt()- TO1.pt())/((*iRecoObj)->pt()) < Cut_) &&
+             if (/*(abs((*iRecoObj)->pt()- TO1.pt())/((*iRecoObj)->pt()) < Cut_)*/(deltaR(**iRecoObj, TO1) < Cut_) &&
                  (std::find(passingRecoObjRefKeys1.begin(), passingRecoObjRefKeys1.end(),
                             iRecoObj->key()) == passingRecoObjRefKeys1.end())) {
-               recoObjColl->push_back(*iRecoObj);
+
+              
                histos1D_["etaDistri_num"]->Fill((*iRecoObj)->eta());
                //if((*iRecoObj)->eta()>(-2.0+i*0.1) && (*iRecoObj)->eta() < (-2.0+(i+1)*0.1)){
                 // y[i]+=1;
@@ -349,7 +359,7 @@ void
 TriggerObjectFilter<T>::endJob() {
    histos1D_["num_divide_de"]->Divide(  histos1D_[ "etaDistri_num" ],  histos1D_[ "etaDistri_de" ]);
    histos1D_["num_divide_de1"]->Divide(  histos1D_[ "etaDistri_num1" ],  histos1D_[ "etaDistri_de" ]);
-   histos1D_["num_divide_de2"]->Divide(  histos1D_[ "etaDistri_num" ],  histos1D_[ "etaDistri_de2" ]);
+   histos1D_["num_divide_de2"]->Divide(  histos1D_[ "etaDistri_num" ],  histos1D_[ "etaDistri_de2" ]);//look best
 }
 
 
