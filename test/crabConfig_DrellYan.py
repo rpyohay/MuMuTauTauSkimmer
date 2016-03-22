@@ -7,7 +7,7 @@ config.General.transferOutputs = True
 config.General.transferLogs = True
 
 config.JobType.pluginName = 'Analysis'
-config.JobType.psetName = 'tauSkimSelection_MC.py'
+config.JobType.psetName = 'tauSelectionSkim_MC.py'
 
 config.Data.inputDataset = '/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/RunIISpring15DR74-Asympt25ns_MCRUN2_74_V9-v3/AODSIM'
 config.Data.inputDBS = 'global'
