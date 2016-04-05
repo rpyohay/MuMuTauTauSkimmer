@@ -304,6 +304,10 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
            }
          } 
      }//firedH
+   if(!firedHLT){
+     std::cout << "Run " << iEvent.run() << ", event " << iEvent.id().event() << ", lumi section ";
+     std::cout << iEvent.getLuminosityBlock().luminosityBlock() << std::endl << std::endl;
+     }
    iEvent.put(recoObjColl);
    return (passingRecoObjRefKeys1.size() >= minNumObjsToPassFilter1_);
 }
