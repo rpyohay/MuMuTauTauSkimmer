@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 from subprocess import *
 import FWCore.Utilities.FileUtils as FileUtils
-mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/testDrellYana.txt')
+mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/testDrellYan.txt')
 process = cms.Process("testSKIM")
 
 #PDG IDs
@@ -25,7 +25,7 @@ TAU_HAD = 0
 TAU_MU = 1
 TAU_E = 2
 TAU_ALL = 3
-
+ANY_PT_RANK = -1
 #tau hadronic decay types
 TAU_ALL_HAD = -1
 TAU_1PRONG_0NEUTRAL = 0
@@ -52,7 +52,7 @@ process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32(1000)
 process.options = cms.untracked.PSet(wantSummary = cms.untracked.bool(True),
                 SkipEvent = cms.untracked.vstring('ProductNotFound'))
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
 process.source = cms.Source("PoolSource", fileNames = cms.untracked.vstring(*mylist))
 
 process.source.inputCommands = cms.untracked.vstring("keep *")
@@ -73,39 +73,17 @@ process.load("Configuration.Geometry.GeometryRecoDB_cff")
 process.load("RecoTauTag.Configuration.RecoPFTauTag_cff")
 process.load("RecoTauTag.RecoTau.RecoTauPiZeroProducer_cfi")
 process.load('Tools/CleanJets/cleanjets_cfi')
-
-#define a parameter set to be passed to all modules that utilize GenTauDecayID for signal taus
-commonGenTauDecayIDPSet = cms.PSet(momPDGID = cms.vint32(A_PDGID),
+ZMuMuPSet = cms.PSet(momPDGID = cms.vint32(Z_PDGID),
                                    chargedHadronPTMin = cms.double(0.0),
                                    neutralHadronPTMin = cms.double(0.0),
                                    chargedLeptonPTMin = cms.double(0.0),
                                    totalPTMin = cms.double(0.0))
-
-
-# load the PAT config
-process.load("PhysicsTools.PatAlgos.patSequences_cff")
-
-# Configure PAT to use PF2PAT instead of AOD sources
-# this function will modify the PAT sequences. 
-from PhysicsTools.PatAlgos.tools.pfTools import *
-from PhysicsTools.PatAlgos.tools.metTools import *
-
-
-
-#require event to fire IsoMu24_eta2p1
-process.RECOAnalyze=cms.EDAnalyzer(
-'MuMuTauTauRecoAnalyzer',
-  tauTag=cms.InputTag('muHadTauSelector','','SKIM'),
- jetMuonMapTag=cms.InputTag('CleanJets','muonValMap','SKIM'),
-  muHadMassBins=cms.vdouble(0.0, 2.0, 4.0, 6.0, 8.0, 10.0,12.0,14.0),
-  outFileName=cms.string('testDrellYan_RECOAnalyzer.root')
-)
-process.genAMuSelector = cms.EDFilter(
-    'GenObjectProducer',
+process.genZMuSelector=cms.EDFilter(
+ 'GenObjectProducer',
     genParticleTag = cms.InputTag('genParticles'),
     absMatchPDGIDs = cms.vuint32(MU_PDGID),     #choose a gen muon...
     sisterAbsMatchPDGID = cms.uint32(MU_PDGID), #...whose sister is another gen muon...
-    genTauDecayIDPSet = AMuMuPSet,              #...and whose mother is a pseudoscalar a
+    genTauDecayIDPSet = ZMuMuPSet,              #...and whose mother is a pseudoscalar a
     primaryTauDecayType = cms.uint32(TAU_ALL),  #choose TAU_ALL when the gen particle is not a tau
     sisterTauDecayType = cms.uint32(TAU_ALL),   #choose TAU_ALL when the gen particle sister is not a tau
     primaryTauPTRank = cms.int32(ANY_PT_RANK),  #should always be ANY_PT_RANK
@@ -119,8 +97,46 @@ process.genAMuSelector = cms.EDFilter(
     minNumGenObjectsToPassFilter = cms.uint32(2), #EDFilter only returns true if >=2 muons are found
     makeAllCollections = cms.bool(False) #should always be False
     )
+process.NearestMuonFromTau=cms.EDFilter(
+'NearestRecoObject',
+ tauTag=cms.InputTag('muHadTauSelector','','SKIM'),
+ muonTag=cms.InputTag('tauMuonSelector','','SKIM'),
+ minNumObjsToPassFilter=cms.uint32(1)
+)
+process.NearestMuonRef=cms.EDFilter('MuonRefSelector',
+                                 src = cms.InputTag('NearestMuonFromTau'),
+                                 cut = cms.string('pt > 0.0'),
+                                 filter = cms.bool(True)
+)
+process.genMatchZMuSelector = cms.EDFilter(
+    'GenMatchedMuonProducer',
+    genParticleTag = cms.InputTag('genParticles'),
+    selectedGenParticleTag = cms.InputTag('genZMuSelector'), #must be a reco::GenParticleRefVector
+    recoObjTag = cms.InputTag('NearestMuonRef'),              #must be a reco::MuonRefVector
+    baseRecoObjTag = cms.InputTag('muons'),
+    genTauDecayIDPSet = ZMuMuPSet,      #need to know the pseudoscalar a mother
+    applyPTCuts = cms.bool(False),        #should always be false
+    countKShort = cms.bool(False),        #should always be false
+    dR = cms.double(0.1),                 #dR criteria for matching
+   Bins=cms.vdouble(0.0, 5.0,10.0, 15.0, 20.0, 40.0, 60.0, 80.0, 100.0),
+    minNumGenObjectsToPassFilter = cms.uint32(0) #EDFilter returns true if >=1 gen-matched reco muon is found
+    )
+#require event to fire IsoMu24_eta2p1
+process.RECOAnalyze=cms.EDAnalyzer(
+'MuMuTauTauRecoAnalyzer',
+  tauTag=cms.InputTag('muHadTauSelector','','SKIM'),
+ jetMuonMapTag=cms.InputTag('CleanJets','muonValMap','SKIM'),
+  genParticleTag=cms.InputTag('genParticles'),
+  muHadMassBins=cms.vdouble(0.0, 2.0, 4.0, 6.0, 8.0, 10.0,12.0,14.0),
+  outFileName=cms.string('testDrellYan_RECOAnalyzer.root')
+)
 
-process.noSelectionSequence = cms.Sequence(process.RECOAnalyze
+process.noSelectionSequence = cms.Sequence(
+process.genZMuSelector*
+process.NearestMuonFromTau*
+process.NearestMuonRef*
+process.genMatchZMuSelector*
+process.RECOAnalyze
 )
 
 process.TFileService = cms.Service("TFileService",

@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 from subprocess import *
 import FWCore.Utilities.FileUtils as FileUtils
-mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/heavy750light9Reco.txt')
+mylist=FileUtils.loadListFromFile('/afs/cern.ch/user/m/mshi/CMSSW_7_6_3/src/GGHAA2Mu2TauAnalysis/DrellYan.txt')
 process = cms.Process("SKIM")
 
 #PDG IDs
@@ -54,14 +54,13 @@ process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32(100)
 process.options = cms.untracked.PSet(wantSummary = cms.untracked.bool(True),
                 SkipEvent = cms.untracked.vstring('ProductNotFound'))
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
 process.source = cms.Source("PoolSource", fileNames = cms.untracked.vstring(*mylist))
 
 process.source.inputCommands = cms.untracked.vstring("keep *")
 
 #for L1GtStableParametersRcd
 process.load('Configuration/StandardSequences/FrontierConditions_GlobalTag_cff')
-process.GlobalTag.globaltag = cms.string('START53_V7F::All')
 
 #for HLT selection
 process.load('HLTrigger/HLTfilters/hltHighLevel_cfi')
@@ -77,12 +76,11 @@ process.load("RecoTauTag.RecoTau.RecoTauPiZeroProducer_cfi")
 process.load('Tools/CleanJets/cleanjets_cfi')
 
 #define a parameter set to be passed to all modules that utilize GenTauDecayID for signal taus
-AMuMuPSet = cms.PSet(momPDGID = cms.vint32(A_PDGID),
+AMuMuPSet = cms.PSet(momPDGID = cms.vint32(Z_PDGID),
                                    chargedHadronPTMin = cms.double(0.0),
                                    neutralHadronPTMin = cms.double(0.0),
                                    chargedLeptonPTMin = cms.double(0.0),
                                    totalPTMin = cms.double(0.0))
-
 
 # load the PAT config
 process.load("PhysicsTools.PatAlgos.patSequences_cff")
@@ -234,10 +232,6 @@ process.PtEtaCut = cms.EDFilter('PTETACUT',
                                  muonTag=cms.InputTag('HighestPTMuon'),
                                  minNumObjsToPassFilter=cms.uint32(1)
 )
-process.filter_1 = hlt.hltHighLevel.clone(
-    HLTPaths = [ 'HLT_Mu45_eta2p1_v2'],
-    throw = False
-    )
 process.genAMuSelector=cms.EDFilter(
  'GenObjectProducer',
     genParticleTag = cms.InputTag('genParticles'),
@@ -267,10 +261,10 @@ process.genMatchedSelector = cms.EDFilter(
     genTauDecayIDPSet = AMuMuPSet,      #need to know the pseudoscalar a mother
     applyPTCuts = cms.bool(False),        #should always be false
     countKShort = cms.bool(False),        #should always be false
-    dR = cms.double(0.3),                 #dR criteria for matching
+    dR = cms.double(0.1),
+    Bins=cms.vdouble(2.0,4.0),                 #dR criteria for matching
     minNumGenObjectsToPassFilter = cms.uint32(1) #EDFilter returns true if >=1 gen-matched reco muon is found
     )
-
 
 process.AMuonSelector = cms.EDFilter('CustomMuonSelector',
                                        baseMuonTag = cms.InputTag('muons'),
@@ -278,7 +272,7 @@ process.AMuonSelector = cms.EDFilter('CustomMuonSelector',
                                        vtxTag = cms.InputTag('offlinePrimaryVertices'),
                                       # vetoMuonTag = cms.InputTag(''),
                                        muonID = cms.string('soft'),
-                                       PFIsoMax = cms.double(0.1),
+                                       PFIsoMax = cms.double(-1),
                                        detectorIsoMax = cms.double(-1.0),
                                        PUSubtractionCoeff = cms.double(0.5),
                                        usePFIso = cms.bool(True),
@@ -286,44 +280,73 @@ process.AMuonSelector = cms.EDFilter('CustomMuonSelector',
                                        etaMax = cms.double(2.4),
                                        minNumObjsToPassFilter = cms.uint32(1)
                                        )
+process.filter_1 = hlt.hltHighLevel.clone(
+    HLTPaths = [ 'HLT_Mu45_eta2p1_v1'],
+    throw = False
+    )
+
 
 process.Mu45Selector = cms.EDFilter(
     'MuonTriggerObjectFilter',
     recoObjTag = cms.InputTag('AMuonSelector'),
     triggerEventTag = cms.untracked.InputTag("hltTriggerSummaryAOD", "", "HLT"),
     triggerResultsTag = cms.untracked.InputTag("TriggerResults", "", "HLT"),
-    MatchCut = cms.untracked.double(0.3),
-    hltTags = cms.VInputTag(cms.InputTag("HLT_Mu45_eta2p1_v2", "", "HLT")
+    MatchCut = cms.untracked.double(0.1),
+    hltTags = cms.VInputTag(cms.InputTag("HLT_Mu45_eta2p1_v1", "", "HLT")
                             ),
-    theRightHLTTag = cms.InputTag("HLT_Mu45_eta2p1_v2"),
-    theRightHLTSubFilter1 = cms.InputTag("hltL3fL1sMu16orMu25L1f0L2f10QL3Filtered45e2p1Q"),
+    theRightHLTTag = cms.InputTag("HLT_Mu45_eta2p1_v1"),
+    theRightHLTSubFilter1 = cms.InputTag("hltL3fL1sMu16orMu25L1f0L2f16QL3Filtered45e2p1Q"),
     HLTSubFilters = cms.untracked.VInputTag(""),
-    minNumObjsToPassFilter1= cms.uint32(1),
+    minNumObjsToPassFilter1= cms.uint32(0),
     outFileName=cms.string("DrellY_Mu45Selector.root")
 )
 process.afterVetoSingleMuon = cms.EDFilter('VetoMuon',
                               muonTag=cms.InputTag('MuonIWant'),
-                              vetoMuonTag=cms.InputTag('Mu45Selector'),
+                              vetoMuonTag=cms.InputTag('AMuonSelector'),
                               minNumObjsToPassFilter=cms.uint32(1)
 )
-process.SingleMuonsPartnerSelector=cms.EDFilter('MuonPartner',
-                                                muonTag=cms.InputTag('afterVetoSingleMuon'),
-                                                minNumObjsToPassFilter=cms.uint32(1)
+
+process.genMatchedMuonAfterVetoMu1 = cms.EDFilter(
+    'GenMatchedMuonProducer',
+    genParticleTag = cms.InputTag('genParticles'),
+    selectedGenParticleTag = cms.InputTag('genAMuSelector'), #must be a reco::GenParticleRefVector
+    recoObjTag = cms.InputTag('afterVetoSingleMuon'),              #must be a reco::MuonRefVector
+    baseRecoObjTag = cms.InputTag('muons'),
+    genTauDecayIDPSet = AMuMuPSet,      #need to know the pseudoscalar a mother
+    applyPTCuts = cms.bool(False),        #should always be false
+    countKShort = cms.bool(False),        #should always be false
+    dR = cms.double(0.1),      
+    Bins=cms.vdouble(2.0, 4.0),           #dR criteria for matching
+    minNumGenObjectsToPassFilter = cms.uint32(1) #EDFilter returns true if >=1 gen-matched reco muon is found
+    )
+process.AMuonSelectorAfterVeto = cms.EDFilter('CustomMuonSelector',
+                                       baseMuonTag = cms.InputTag('muons'),
+                                       muonTag = cms.InputTag('genMatchedMuonAfterVetoMu1'),
+                                       vtxTag = cms.InputTag('offlinePrimaryVertices'),
+                                      # vetoMuonTag = cms.InputTag(''),
+                                       muonID = cms.string('soft'),
+                                       PFIsoMax = cms.double(-1),
+                                       detectorIsoMax = cms.double(-1.0),
+                                       PUSubtractionCoeff = cms.double(0.5),
+                                       usePFIso = cms.bool(True),
+                                       passIso = cms.bool(True),
+                                       etaMax = cms.double(2.4),
+                                       minNumObjsToPassFilter = cms.uint32(1)
+                                       )
+process.OppositeSign=cms.EDFilter('OppositeSign',
+                                   muonTag=cms.InputTag('AMuonSelectorAfterVeto'),
+                                   SingleMuonTag=cms.InputTag('AMuonSelector'),
+                                   minNumObjsToPassFilter=cms.uint32(1)
 )
-process.SingleMuonPartnerLooseID=cms.EDFilter('LooseMuon',
-                                              muonTag=cms.InputTag('SingleMuonsPartnerSelector'),
-                                              minNumObjsToPassFilter=cms.uint32(1)
+process.HighestPTMuon2 = cms.EDFilter('HighestPtSelector',
+                                 muonTag = cms.InputTag('OppositeSign')
 )
 process.AMuTriggerAnalyzer=cms.EDAnalyzer(
    'AMuTriggerAnalyzer',
    GenMatchedRecoMuonTag= cms.InputTag('AMuonSelector'),
    MuPassTrigger=cms.InputTag('Mu45Selector'),
-   genParticleTag = cms.InputTag('genParticles')
-)
-process.OppositeSign=cms.EDFilter('OppositeSign',
-                                   muonTag=cms.InputTag('SingleMuonPartnerLooseID'),
-                                   SingleMuonTag=cms.InputTag('Mu45Selector'),
-                                   minNumObjsToPassFilter=cms.uint32(1)
+   GenMatchedRecoMuonTag2 = cms.InputTag('HighestPTMuon2'),
+   Bins=cms.vdouble(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 1,2, 3,4,5)
 )
 process.tauMuonPTSelector = cms.EDFilter('MuonRefSelector',
                                          src = cms.InputTag('muons'),
@@ -335,8 +358,9 @@ process.tauMuonSelector = cms.EDFilter('CustomMuonSelector',
                                        muonTag = cms.InputTag('tauMuonPTSelector'),
                                        vtxTag = cms.InputTag('offlinePrimaryVertices'),
                                        vetoMuonTag = cms.InputTag('Mu45Selector'),
+                                       vetoMuonTag2=cms.InputTag('HighestPTMuon2'),
                                        muonID = cms.string('soft'),
-                                       PFIsoMax = cms.double(0.1),
+                                       PFIsoMax = cms.double(-1),
                                        detectorIsoMax = cms.double(-1.0),
                                        PUSubtractionCoeff = cms.double(0.5),
                                        usePFIso = cms.bool(True),
@@ -395,7 +419,7 @@ process.muHadTauSelector = cms.EDFilter(
     tauHadIsoTag = cms.InputTag('hpsPFTauDiscriminationByCombinedIsolationDeltaBetaCorrRaw3Hits', '',
                                 'SKIM'),
     tauDiscriminatorTags = cms.VInputTag(
-    cms.InputTag('hpsPFTauDiscriminationByDecayModeFindingOldDMs', '', 'SKIM'),
+    cms.InputTag('hpsPFTauDiscriminationByDecayModeFindingNewDMs', '', 'SKIM'),
     cms.InputTag('hpsPFTauDiscriminationByMediumCombinedIsolationDBSumPtCorr3Hits','','SKIM')
     ),
     jetTag = cms.InputTag('CleanJets', 'ak4PFJetsNoMu', 'SKIM'),
@@ -406,14 +430,14 @@ process.muHadTauSelector = cms.EDFilter(
     pTMin = cms.double(5.0),
     etaMax = cms.double(2.4),
     isoMax = cms.double(-1.0),
-    dR = cms.double(0.3),
+    dR = cms.double(0.1),
     minNumObjsToPassFilter = cms.uint32(1),
     outFileName=cms.string('DrellYan_muHadTauSelector.root')
     )
 process.RECOAnalyze=cms.EDAnalyzer(
 'MuMuTauTauRecoAnalyzer',
   tauTag=cms.InputTag('muHadTauSelector'),
-  overlapCandTag=cms.InputTag('MuonIWant'),
+  genParticleTag=cms.InputTag('genParticles'),
  jetMuonMapTag=cms.InputTag('CleanJets','muonValMap','SKIM'),
   muHadMassBins=cms.vdouble(0.0, 2.0, 4.0, 6.0, 8.0, 10.0,12.0,14.0),
   outFileName=cms.string('DrellYan_RECOAnalyzer.root')
@@ -431,23 +455,24 @@ process.MuMuSequenceSelector=cms.Sequence(
 	process.MuonIWant*
 	process.HighestPTMuon*
         process.PtEtaCut*
-#        process.filter_1
         process.genAMuSelector*
+#     process.filter_1
         process.genMatchedSelector*
         process.AMuonSelector*
         process.Mu45Selector*
-        process.AMuTriggerAnalyzer*
 	process.afterVetoSingleMuon*
-	process.SingleMuonsPartnerSelector*
-	process.SingleMuonPartnerLooseID*
-        process.OppositeSign
+        process.genMatchedMuonAfterVetoMu1*
+        process.AMuonSelectorAfterVeto*
+        process.OppositeSign*
+        process.HighestPTMuon2*
+process.AMuTriggerAnalyzer
 )
 
-process.noSelectionSequence = cms.Sequence(process.MuMuSequenceSelector*
-                                           process.PFTau*
-                                           process.muHadTauSelector*
-                                           process.RECOAnalyze
-                                     #      process.btagging
+process.noSelectionSequence = cms.Sequence(process.MuMuSequenceSelector
+                                     #      process.PFTau*
+                                      #     process.muHadTauSelector*
+                                        #   process.btagging*
+                                        #   process.RECOAnalyze
 )
 
 ## #selection path

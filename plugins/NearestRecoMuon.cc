@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    temp/HighestPtSelector
-// Class:      HighestPtSelector
+// Package:    temp/NearestRecoObject
+// Class:      NearestRecoObject
 // 
-/**\class HighestPtSelector HighestPtSelector.cc temp/HighestPtSelector/plugins/HighestPtSelector.cc
+/**\class NearestRecoObject NearestRecoObject.cc temp/NearestRecoObject/plugins/NearestRecoObject.cc
 
  Description: [one line class summary]
 
@@ -35,15 +35,16 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "Tools/Common/interface/Common.h"
 //
 //
 // class declaration
 //
 
-class HighestPtSelector : public edm::EDFilter {
+class NearestRecoObject : public edm::EDFilter {
    public:
-      explicit HighestPtSelector(const edm::ParameterSet&);
-      ~HighestPtSelector();
+      explicit NearestRecoObject(const edm::ParameterSet&);
+      ~NearestRecoObject();
 
       static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -58,7 +59,9 @@ class HighestPtSelector : public edm::EDFilter {
       //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
       // ----------member data ---------------------------
-edm::EDGetTokenT<reco::MuonRefVector> muonTag_; 
+ edm::EDGetTokenT<edm::RefVector<std::vector<reco::Muon> > > muonTag_;
+  edm::EDGetTokenT<reco::PFTauRefVector> tauTag_;
+ unsigned int minNumObjsToPassFilter_;
 };
 
 //
@@ -72,15 +75,18 @@ edm::EDGetTokenT<reco::MuonRefVector> muonTag_;
 //
 // constructors and destructor
 //
-HighestPtSelector::HighestPtSelector(const edm::ParameterSet& iConfig):
-  muonTag_(consumes<reco::MuonRefVector>(iConfig.getParameter<edm::InputTag>("muonTag")))
+NearestRecoObject::NearestRecoObject(const edm::ParameterSet& iConfig):
+ muonTag_(consumes<edm::RefVector<std::vector<reco::Muon> > >(iConfig.getParameter<edm::InputTag>("muonTag"))),
+ tauTag_(consumes<reco::PFTauRefVector>(iConfig.getParameter<edm::InputTag>("tauTag"))),
+ minNumObjsToPassFilter_(iConfig.getParameter<unsigned int>("minNumObjsToPassFilter"))
 {
+
    //now do what ever initialization is needed
-   produces<reco::MuonRefVector>();
+   produces<reco::MuonCollection>();
 }
 
 
-HighestPtSelector::~HighestPtSelector()
+NearestRecoObject::~NearestRecoObject()
 {
  
    // do anything here that needs to be done at desctruction time
@@ -95,56 +101,55 @@ HighestPtSelector::~HighestPtSelector()
 
 // ------------ method called on each new Event  ------------
 bool
-HighestPtSelector::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
+NearestRecoObject::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-   bool LargerThan0=true;
-   using namespace edm;
+  using namespace edm;
+  unsigned int nPassingMuons=0;
+  edm::Handle<edm::RefVector<std::vector<reco::Muon> > > recoObjs;
+  iEvent.getByToken(muonTag_, recoObjs);
 
-   edm::Handle<reco::MuonRefVector> pMuons;
-   iEvent.getByToken(muonTag_, pMuons); 
-   if((pMuons->size())==0)
-   {
-     LargerThan0=false;
-   }
-   else
-   {
-     double max=0.0;
-     reco::MuonRef maxMuon;
-     for(reco::MuonRefVector::const_iterator iMuon=pMuons->begin();
-         iMuon!=pMuons->end();++iMuon)
-     {
-       if(((*iMuon)->pt())> max)
-       {
-         max=(*iMuon)->pt();
-         maxMuon=(*iMuon);
-       }
-       else
-         continue;
-     }
+  edm::Handle<reco::PFTauRefVector> pTaus;
+  iEvent.getByToken(tauTag_, pTaus);
 
-     std::auto_ptr<reco::MuonRefVector> muonColl(new reco::MuonRefVector);
-     muonColl->push_back(maxMuon);
-     iEvent.put(muonColl);
-   }
+  std::vector<reco::Muon*> overlapCandPtrs;
+  if (recoObjs.isValid()) {
+    for (typename edm::RefVector<std::vector<reco::Muon> >::const_iterator iOverlapCand = 
+	   recoObjs->begin(); iOverlapCand != recoObjs->end(); 
+	 ++iOverlapCand) { overlapCandPtrs.push_back(const_cast<reco::Muon*>(iOverlapCand->get())); }
+  }
+  std::auto_ptr<reco::MuonCollection> muonColl(new reco::MuonCollection);
 
-   return LargerThan0;
+  for (reco::PFTauRefVector::const_iterator iTau = pTaus->begin(); iTau != pTaus->end();
+       ++iTau) 
+  {
+      int nearestMuonIndex = -1;
+      const reco::Muon* nearestMuon = 
+      Common::nearestObject(*iTau, overlapCandPtrs, nearestMuonIndex);
+      muonColl->push_back(*nearestMuon);
+      nPassingMuons++;
+  }
+  
+  iEvent.put(muonColl);
+
+  return (nPassingMuons >= minNumObjsToPassFilter_);
 }
+   
 
 // ------------ method called once each job just before starting event loop  ------------
 void 
-HighestPtSelector::beginJob()
+NearestRecoObject::beginJob()
 {
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void 
-HighestPtSelector::endJob() {
+NearestRecoObject::endJob() {
 }
 
 // ------------ method called when starting to processes a run  ------------
 /*
 void
-HighestPtSelector::beginRun(edm::Run const&, edm::EventSetup const&)
+NearestRecoObject::beginRun(edm::Run const&, edm::EventSetup const&)
 { 
 }
 */
@@ -152,7 +157,7 @@ HighestPtSelector::beginRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when ending the processing of a run  ------------
 /*
 void
-HighestPtSelector::endRun(edm::Run const&, edm::EventSetup const&)
+NearestRecoObject::endRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -160,7 +165,7 @@ HighestPtSelector::endRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when starting to processes a luminosity block  ------------
 /*
 void
-HighestPtSelector::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+NearestRecoObject::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
@@ -168,14 +173,14 @@ HighestPtSelector::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventS
 // ------------ method called when ending the processing of a luminosity block  ------------
 /*
 void
-HighestPtSelector::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+NearestRecoObject::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
  
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void
-HighestPtSelector::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+NearestRecoObject::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
@@ -183,4 +188,4 @@ HighestPtSelector::fillDescriptions(edm::ConfigurationDescriptions& descriptions
   descriptions.addDefault(desc);
 }
 //define this as a plug-in
-DEFINE_FWK_MODULE(HighestPtSelector);
+DEFINE_FWK_MODULE(NearestRecoObject);
