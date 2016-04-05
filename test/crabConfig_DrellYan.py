@@ -1,8 +1,8 @@
 from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
-config.General.requestName = 'request_DrellYan_Skim'
-config.General.workArea = 'crab_projects'
+config.General.requestName = 'request_DrellYan_Skim22'
+config.General.workArea = 'crab_projects2'
 config.General.transferOutputs = True
 config.General.transferLogs = True
 

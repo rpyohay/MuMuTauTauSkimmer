@@ -163,14 +163,14 @@ TriggerObjectFilter<T>::beginJob()
 {
   //std::cout<< "beginJob" << std::endl;
   edm::Service<TFileService> fileService;
-  histos1D_[ "etaDistri_num" ]=fileService->make<TH1D>("etaDistri_num","eta distribution of higher pt muon with fired HLT and trigger-reco match",60,-3.,3.);
-  histos1D_["etaDistri_de"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco pt>17 muon without trigger fired or trigger-reco match",60,-3.,3.);
-  histos1D_["num_divide_de"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu17 trigger+trigger matching efficiency",60,-3.,3.);
-  histos1D_[ "etaDistri_num1" ]=fileService->make<TH1D>("etaDistri_num1","eta distribution of reco pt>17 muon with fired HLT no trigger-reco match",60,-3.,3.);
-  histos1D_["num_divide_de1"]=fileService->make<TH1D>("num_divide_de1","eta distribution of Mu17 trigger efficiency(no trigger-reco match done)",60,-3.,3.);
+  histos1D_[ "etaDistri_num" ]=fileService->make<TH1D>("etaDistri_num","eta distribution of highest pt muon with fired HLT and trigger-reco match",60,-3.,3.);
+  histos1D_["etaDistri_de"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco muon without trigger fired or trigger-reco match H750a09",60,-3.,3.);
+  histos1D_["num_divide_de"]=fileService->make<TH1D>("num_divide_de","eta distribution of trigger+trigger matching efficiency",60,-3.,3.);
+  histos1D_[ "etaDistri_num1" ]=fileService->make<TH1D>("etaDistri_num1","eta distribution of highet pt reco muon with fired HLT no trigger-reco match",60,-3.,3.);
+  histos1D_["num_divide_de1"]=fileService->make<TH1D>("num_divide_de1","eta distribution of highest pt muon trigger efficiency(no trigger-reco match done)",60,-3.,3.);
 
-  histos1D_["etaDistri_de2"]=fileService->make<TH1D>("etaDistri_de","eta distribution of all reco muon with Mu17 trigger-reco match, no HLT fired",60,-3.,3.);
-  histos1D_["num_divide_de2"]=fileService->make<TH1D>("num_divide_de","eta distribution of Mu17 trigger efficiency(with trigger-reco match)",60,-3.,3.);
+  histos1D_["etaDistri_de2"]=fileService->make<TH1D>("etaDistri_de","eta distribution of reco muon with trigger-reco match, no HLT fired",60,-3.,3.);
+  histos1D_["num_divide_de2"]=fileService->make<TH1D>("num_divide_de","eta distribution of highest pt muon trigger efficiency(with trigger-reco match)",60,-3.,3.);
 
   histos1D_["keysize1"]=fileService->make<TH1D>("keysize1","#of particles per event passing Mu17 leg statistics",10,0,10);
   histos2D_["ptTrigCand1"] =fileService->make< TH2D >("ptTrigCand1","Object vs. candidate_higher_p_{T} (GeV)",150, 0., 150., 150, 0., 150.);
@@ -304,6 +304,10 @@ TriggerObjectFilter<T>::filter( edm::Event& iEvent, const edm::EventSetup& iSetu
            }
          } 
      }//firedH
+   if(!firedHLT){
+     std::cout << "Run " << iEvent.run() << ", event " << iEvent.id().event() << ", lumi section ";
+     std::cout << iEvent.getLuminosityBlock().luminosityBlock() << std::endl << std::endl;
+     }
    iEvent.put(recoObjColl);
    return (passingRecoObjRefKeys1.size() >= minNumObjsToPassFilter1_);
 }
